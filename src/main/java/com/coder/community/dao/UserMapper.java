@@ -15,4 +15,6 @@ public interface UserMapper {
     void insertUser(User user);
     void updateHeader(int id,String headerUrl);
     void updatePassword(int id,String password);
+    void deleteUserById(int id);
+    void deleteUserByName(String name);
 }

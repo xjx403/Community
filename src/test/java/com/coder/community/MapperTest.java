@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.Date;
 import java.util.List;
 
 import static org.hamcrest.Matchers.notNullValue;
@@ -52,11 +53,25 @@ public class MapperTest {
     }
 
     @Test
-    public void test02  (){
-        User user=userMapper.selectById(1);
-        System.out.println(user);
+    public void testUserMapper(){
+        System.out.println(userMapper.selectByEmail("2397882391@qq.com"));
+        userMapper.deleteUserByName("去你奶奶的");
+        System.out.println(userMapper.selectById(150));
     }
 
+    @Test
+    public void test02  (){
+        User user=userMapper.selectById(21);
+        System.out.println(user);
+    }
+    @Test
+    public void test04  (){
+        User user=userMapper.selectByEmail("1477191128@qq.com");
+        System.out.println(user);
+        user=userMapper.selectById(150);
+        System.out.println(user);
+        userMapper.deleteUserById(150);
+    }
     @Autowired
     private HomeController homeController;
     @Test

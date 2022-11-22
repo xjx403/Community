@@ -3,8 +3,10 @@ package com.coder.community;
 
 import com.coder.community.controller.HomeController;
 import com.coder.community.dao.DiscussPostMapper;
+import com.coder.community.dao.LoginTicketMapper;
 import com.coder.community.dao.UserMapper;
 import com.coder.community.entity.DiscussPost;
+import com.coder.community.entity.LoginTicket;
 import com.coder.community.entity.User;
 import org.junit.Assert;
 import org.junit.Test;
@@ -25,10 +27,13 @@ import static org.hamcrest.Matchers.notNullValue;
 public class MapperTest {
 
     @Autowired
-    DiscussPostMapper discussPostMapper;
+    private DiscussPostMapper discussPostMapper;
 
     @Autowired
-    UserMapper userMapper;
+    private UserMapper userMapper;
+
+    @Autowired
+    private LoginTicketMapper loginTicketMapper;
 
     void contextLoads() {
         List<DiscussPost> list=discussPostMapper.selectDiscussPost(101,0,1);
@@ -72,10 +77,25 @@ public class MapperTest {
         System.out.println(user);
         userMapper.deleteUserById(150);
     }
-    @Autowired
-    private HomeController homeController;
+
     @Test
-    public void test03 (){
-        Assert.assertThat(homeController,notNullValue());
+    public void testInsertLoginTicket(){
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(101);
+        loginTicket.setStatus(0);
+        loginTicket.setTicket("abc");
+        loginTicket.setExpired(new Date(System.currentTimeMillis()+1000 * 60 * 10));
+
+        loginTicketMapper.insertLoginTicket(loginTicket);
+    }
+
+    @Test
+    public void testSelectLoginTicket(){
+        LoginTicket loginTicket=loginTicketMapper.selectByTicket("abc");
+        System.out.println(loginTicket);
+
+        loginTicketMapper.updateStatus("abc",1);
+        loginTicket=loginTicketMapper.selectByTicket("abc");
+        System.out.println(loginTicket);
     }
 }

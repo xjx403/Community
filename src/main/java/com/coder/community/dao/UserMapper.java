@@ -11,10 +11,15 @@ public interface UserMapper {
     User selectByEmail(String email);
     User selectByName(String name);
 
-    void updateStatus(int id,int status);
-    void insertUser(User user);
-    void updateHeader(int id,String headerUrl);
-    void updatePassword(int id,String password);
+
+    int insertUser(User user);
+
+    int updateStatus(int id, int status);
+
+    int updateHeader(int id, String headerUrl);
+
+    int updatePassword(int id, String password);
     void deleteUserById(int id);
     void deleteUserByName(String name);
+
 }

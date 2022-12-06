@@ -1,8 +1,6 @@
 package com.coder.community.controller;
 
 import com.coder.community.util.CommunityUtil;
-import com.sun.deploy.net.HttpResponse;
-import org.apache.ibatis.annotations.Mapper;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;

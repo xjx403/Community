@@ -5,6 +5,9 @@ import org.springframework.util.DigestUtils;
 
 import java.util.UUID;
 
+/**
+ * @author 不想想名字
+ */
 public class CommunityUtil {
 
     // 生成随机字符串
@@ -16,7 +19,9 @@ public class CommunityUtil {
     // hello  -> 113rsadsadd1
     // hello + 3e4a8 ->aabcdscasad
     public static String md5(String key){
-        if(StringUtils.isBlank(key)) return null;
+        if(StringUtils.isBlank(key)) {
+            return null;
+        }
 
         return DigestUtils.md5DigestAsHex(key.getBytes());
     }

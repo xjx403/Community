@@ -4,7 +4,9 @@ import com.coder.community.entity.DiscussPost;
 import com.coder.community.entity.Page;
 import com.coder.community.entity.User;
 import com.coder.community.service.DicussPostService;
+import com.coder.community.service.LikeService;
 import com.coder.community.service.UserService;
+import com.coder.community.util.CommunityConstant;
 import org.apache.ibatis.annotations.Mapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -20,11 +22,14 @@ import java.util.Map;
 
 
 @Controller
-public class HomeController {
+public class HomeController implements CommunityConstant {
     @Autowired
     private DicussPostService dicussPostService;
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private LikeService likeService;
 
     @RequestMapping(path = "/index",method = RequestMethod.GET)
     public String getIndexPage(Model model, Page page){
@@ -41,6 +46,9 @@ public class HomeController {
                 map.put("post",post);
                 User user=userService.findUserById(post.getUserId());
                 map.put("user",user);
+
+                long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, post.getId());
+                map.put("likeCount",likeCount);
                 dicussPosts.add(map);
             }
         }

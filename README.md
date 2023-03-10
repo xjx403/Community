@@ -1,7 +1,422 @@
 # -SpringBoot-
 基于SpringBoot的社区讨论系统
 附相关技术分析：
-# 一、SpringBoot
+
+# 一、MyBatisGenerator 详解：
+
+主要有Generator.java , CommentGenerator.java 和 generatorConfig.xml三部分组成
+
+- `generatorConfig.xml`
+
+  ```xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE generatorConfiguration
+          PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+          "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+  
+  <generatorConfiguration>
+      <properties resource="generator.properties"/>
+      <context id="MySqlContext" targetRuntime="MyBatis3" defaultModelType="flat">
+          <property name="beginningDelimiter" value="`"/>
+          <property name="endingDelimiter" value="`"/>
+          <property name="javaFileEncoding" value="UTF-8"/>
+          <!-- 为模型生成序列化方法-->
+          <plugin type="org.mybatis.generator.plugins.SerializablePlugin"/>
+          <!-- 为生成的Java模型创建一个toString方法 -->
+          <plugin type="org.mybatis.generator.plugins.ToStringPlugin"/>
+          <!--生成mapper.xml时覆盖原文件-->
+          <plugin type="org.mybatis.generator.plugins.UnmergeableXmlMappersPlugin" />
+          <!--可以自定义生成model的代码注释-->
+          <commentGenerator type="com.groups.mymall.mbg.CommentGenerator">
+              <!-- 是否去除自动生成的注释 true：是 ： false:否 -->
+              <property name="suppressAllComments" value="true"/>
+              <property name="suppressDate" value="true"/>
+              <property name="addRemarkComments" value="true"/>
+          </commentGenerator>
+          <!--配置数据库连接-->
+          <jdbcConnection driverClass="${jdbc.driverClass}"
+                          connectionURL="${jdbc.connectionURL}"
+                          userId="${jdbc.userId}"
+                          password="${jdbc.password}">
+              <!--解决mysql驱动升级到8.0后不生成指定数据库代码的问题-->
+              <property name="nullCatalogMeansCurrent" value="true" />
+          </jdbcConnection>
+          <!--指定生成model的路径-->
+          <javaModelGenerator targetPackage="com.groups.mymall.mbg.model" targetProject="mymall\src\main\java"/>
+          <!--指定生成mapper.xml的路径-->
+          <sqlMapGenerator targetPackage="com.groups.mymall.mbg.mapper" targetProject="mymall\src\main\resources"/>
+          <!--指定生成mapper接口的的路径-->
+          <javaClientGenerator type="XMLMAPPER" targetPackage="com.groups.mymall.mbg.mapper"
+                               targetProject="mymall\src\main\java"/>
+          <!--生成全部表tableName设为%-->
+          <table tableName="pms_brand">
+              <generatedKey column="id" sqlStatement="MySql" identity="true"/>
+          </table>
+          <table tableName="ums_admin">
+              <generatedKey column="id" sqlStatement="MySql" identity="true"/>
+          </table>
+      </context>
+  </generatorConfiguration>
+  ```
+
+- Generator.java
+
+  ```java
+  package com.groups.mymall.mbg;
+  
+  import org.mybatis.generator.api.MyBatisGenerator;
+  import org.mybatis.generator.config.Configuration;
+  import org.mybatis.generator.config.xml.ConfigurationParser;
+  import org.mybatis.generator.internal.DefaultShellCallback;
+  
+  import java.io.InputStream;
+  import java.util.ArrayList;
+  import java.util.List;
+  /**
+   * 用于生产MBG的代码
+   * Created by macro on 2018/4/26.
+   */
+  public class Generator {
+      public static void main(String[] args) throws Exception {
+          //MBG 执行过程中的警告信息
+          List<String> warnings = new ArrayList<String>();
+          //当生成的代码重复时，覆盖原代码
+          boolean overwrite = true;
+          //读取我们的 MBG 配置文件
+          InputStream is = Generator.class.getResourceAsStream("/generatorConfig.xml");
+          ConfigurationParser cp = new ConfigurationParser(warnings);
+          Configuration config = cp.parseConfiguration(is);
+          is.close();
+  
+          DefaultShellCallback callback = new DefaultShellCallback(overwrite);
+          //创建 MBG
+          MyBatisGenerator myBatisGenerator = new MyBatisGenerator(config, callback, warnings);
+          //执行生成代码
+          myBatisGenerator.generate(null);
+          //输出警告信息
+          for (String warning : warnings) {
+              System.out.println(warning);
+          }
+      }
+  }
+  ```
+
+- `CommentGenerator.java`
+
+  ```java
+  package com.groups.mymall.mbg;
+  
+  import org.mybatis.generator.api.IntrospectedColumn;
+  import org.mybatis.generator.api.IntrospectedTable;
+  import org.mybatis.generator.api.dom.java.CompilationUnit;
+  import org.mybatis.generator.api.dom.java.Field;
+  import org.mybatis.generator.api.dom.java.FullyQualifiedJavaType;
+  import org.mybatis.generator.internal.DefaultCommentGenerator;
+  import org.mybatis.generator.internal.util.StringUtility;
+  
+  import java.util.Properties;
+  
+  /**
+   * 自定义注释生成器
+   * Created by macro on 2018/4/26.
+   */
+  public class CommentGenerator extends DefaultCommentGenerator {
+      private boolean addRemarkComments = false;
+      private static final String EXAMPLE_SUFFIX="Example";
+      private static final String MAPPER_SUFFIX="Mapper";
+      private static final String API_MODEL_PROPERTY_FULL_CLASS_NAME="io.swagger.annotations.ApiModelProperty";
+  
+      /**
+       * 设置用户配置的参数
+       */
+      @Override
+      public void addConfigurationProperties(Properties properties) {
+          super.addConfigurationProperties(properties);
+          this.addRemarkComments = StringUtility.isTrue(properties.getProperty("addRemarkComments"));
+      }
+  
+      /**
+       * 给字段添加注释
+       */
+      @Override
+      public void addFieldComment(Field field, IntrospectedTable introspectedTable,
+                                  IntrospectedColumn introspectedColumn) {
+          String remarks = introspectedColumn.getRemarks();
+          //根据参数和备注信息判断是否添加swagger注解信息
+          if(addRemarkComments&&StringUtility.stringHasValue(remarks)){
+  //            addFieldJavaDoc(field, remarks);
+              //数据库中特殊字符需要转义
+              if(remarks.contains("\"")){
+                  remarks = remarks.replace("\"","'");
+              }
+              //给model的字段添加swagger注解
+              field.addJavaDocLine("@ApiModelProperty(value = \""+remarks+"\")");
+          }
+      }
+  
+      /**
+       * 给model的字段添加注释
+       */
+      private void addFieldJavaDoc(Field field, String remarks) {
+          //文档注释开始
+          field.addJavaDocLine("/**");
+          //获取数据库字段的备注信息
+          String[] remarkLines = remarks.split(System.getProperty("line.separator"));
+          for(String remarkLine:remarkLines){
+              field.addJavaDocLine(" * "+remarkLine);
+          }
+          addJavadocTag(field, false);
+          field.addJavaDocLine(" */");
+      }
+  
+      @Override
+      public void addJavaFileComment(CompilationUnit compilationUnit) {
+          super.addJavaFileComment(compilationUnit);
+          //只在model中添加swagger注解类的导入
+          if(!compilationUnit.getType().getFullyQualifiedName().contains(MAPPER_SUFFIX)&&!compilationUnit.getType().getFullyQualifiedName().contains(EXAMPLE_SUFFIX)){
+              compilationUnit.addImportedType(new FullyQualifiedJavaType(API_MODEL_PROPERTY_FULL_CLASS_NAME));
+          }
+      }
+  }
+  
+  ```
+
+## 踩坑集
+
+- xml篇
+
+  ```xml
+  <!--生成全部表tableName设为%-->
+  <table tableName="pms_brand">
+      <generatedKey column="id" sqlStatement="MySql" identity="true"/>
+  </table>
+  <table tableName="ums_admin">
+      <generatedKey column="id" sqlStatement="MySql" identity="true"/>
+  </table>
+  ```
+
+  上段代码为指定为哪些表生成对于的model、mapper、mapper.xml。**在多次运行时，会覆盖Java的文件，**但是不会覆盖.xml文件**，所以会存在，xml有多份内容，导致和mapper对应不起来。
+
+  > 解决办法：
+  >
+  > 升级MyBatis生成器：
+  >
+  > ```xml
+  > <!-- MyBatis 生成器 -->
+  > <dependency>
+  >  <groupId>org.mybatis.generator</groupId>
+  >  <artifactId>mybatis-generator-core</artifactId>
+  >  <version>1.3.7</version>
+  > </dependency>
+  > ```
+  >
+  > 在generatorconfig-xml文件中添加覆盖mapper-xml的插在generatorConfig.xml文件中添加覆盖mapper.xml的插件:
+  >
+  > ```xml
+  > <!--生成mapper.xml时覆盖原文件-->
+  > <plugin type="org.mybatis.generator.plugins.UnmergeableXmlMappersPlugin" />
+  > ```
+
+- mapper接口和Mapper.xml文件的对应
+
+  在运行过程中会出现，调用mapper接口时，为空指针（NullPointException），则说明有可能mapper 接口和xml文件的对应出现问题。
+
+  1. **配置类中class路径配置问题！！！**
+
+     ```yml
+     mybatis:
+       mapper-locations:
+         - classpath:mapper/*.xml
+         - classpath:com/**/mapper/*.xml
+     ```
+
+     路径含义已学，可自查，故略。
+
+  2. 记得加@Autowired
+
+- Generator生成的接口类，默认**没有加@Mapper注释**，测试时使用**@Autowired idea标红**，但是在实际运行后仍然能够进行查询。
+
+  是因为使用了MybatisConfig配置类配置了Mapper扫描路径。
+
+# 二、Swagger-UI配置过程：
+
+# SpringBoot配置Swagger流程及踩坑记录
+
+## 一、依赖
+
+```xml
+ <!--swagger-->
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger-ui</artifactId>
+        </dependency>     
+```
+
+## 二、配置类
+
+```java
+@Configuration
+@EnableSwagger2
+public class SwaggerConfig {
+    
+}
+```
+
+#### 常用注解
+
+- @Api：用于修饰Controller类，生成Controller相关文档信息
+- @ApiOperation：用于修饰Controller类中的方法，生成接口方法相关文档信息
+- @ApiParam：用于修饰接口中的参数，生成接口参数相关文档信息
+- @ApiModelProperty：用于修饰实体类的属性，当实体类是请求参数或返回结果时，直接生成相关文档信息
+
+
+
+
+
+# 附：踩坑记录
+
+## 1. 报错如下:
+
+```java
+Error starting ApplicationContext. To display the conditions report re-run your application with 'debug' enabled.
+2023-03-07 10:59:12.849 ERROR 22312 --- [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.context.ApplicationContextException: Failed to start bean 'documentationPluginsBootstrapper'; nested exception is java.lang.NullPointerException
+	at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:181) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.context.support.DefaultLifecycleProcessor.access$200(DefaultLifecycleProcessor.java:54) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.context.support.DefaultLifecycleProcessor$LifecycleGroup.start(DefaultLifecycleProcessor.java:356) ~[spring-context-5.3.25.jar:5.3.25]
+	at java.lang.Iterable.forEach(Iterable.java:75) ~[na:1.8.0_281]
+	at org.springframework.context.support.DefaultLifecycleProcessor.startBeans(DefaultLifecycleProcessor.java:155) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.context.support.DefaultLifecycleProcessor.onRefresh(DefaultLifecycleProcessor.java:123) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.context.support.AbstractApplicationContext.finishRefresh(AbstractApplicationContext.java:935) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:586) ~[spring-context-5.3.25.jar:5.3.25]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:147) ~[spring-boot-2.7.9.jar:2.7.9]
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:731) [spring-boot-2.7.9.jar:2.7.9]
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:408) [spring-boot-2.7.9.jar:2.7.9]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:307) [spring-boot-2.7.9.jar:2.7.9]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1303) [spring-boot-2.7.9.jar:2.7.9]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1292) [spring-boot-2.7.9.jar:2.7.9]
+	at com.example.snapsalesimulation.SnapSaleSimulationApplication.main(SnapSaleSimulationApplication.java:10) [classes/:na]
+Caused by: java.lang.NullPointerException: null
+	at springfox.documentation.spring.web.WebMvcPatternsRequestConditionWrapper.getPatterns(WebMvcPatternsRequestConditionWrapper.java:56) ~[springfox-spring-webmvc-3.0.0.jar:3.0.0]
+	at springfox.documentation.RequestHandler.sortedPaths(RequestHandler.java:113) ~[springfox-core-3.0.0.jar:3.0.0]
+	at springfox.documentation.spi.service.contexts.Orderings.lambda$byPatternsCondition$3(Orderings.java:89) ~[springfox-spi-3.0.0.jar:3.0.0]
+	at java.util.Comparator.lambda$comparing$77a9974f$1(Comparator.java:469) ~[na:1.8.0_281]
+	at java.util.TimSort.countRunAndMakeAscending(TimSort.java:355) ~[na:1.8.0_281]
+	at java.util.TimSort.sort(TimSort.java:220) ~[na:1.8.0_281]
+	at java.util.Arrays.sort(Arrays.java:1512) ~[na:1.8.0_281]
+	at java.util.ArrayList.sort(ArrayList.java:1464) ~[na:1.8.0_281]
+	at java.util.stream.SortedOps$RefSortingSink.end(SortedOps.java:387) ~[na:1.8.0_281]
+	at java.util.stream.Sink$ChainedReference.end(Sink.java:258) ~[na:1.8.0_281]
+	at java.util.stream.Sink$ChainedReference.end(Sink.java:258) ~[na:1.8.0_281]
+	at java.util.stream.Sink$ChainedReference.end(Sink.java:258) ~[na:1.8.0_281]
+	at java.util.stream.Sink$ChainedReference.end(Sink.java:258) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:483) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:472) ~[na:1.8.0_281]
+	at java.util.stream.ReduceOps$ReduceOp.evaluateSequential(ReduceOps.java:708) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234) ~[na:1.8.0_281]
+	at java.util.stream.ReferencePipeline.collect(ReferencePipeline.java:499) ~[na:1.8.0_281]
+	at springfox.documentation.spring.web.plugins.WebMvcRequestHandlerProvider.requestHandlers(WebMvcRequestHandlerProvider.java:81) ~[springfox-spring-webmvc-3.0.0.jar:3.0.0]
+	at java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:193) ~[na:1.8.0_281]
+	at java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1384) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:482) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:472) ~[na:1.8.0_281]
+	at java.util.stream.ReduceOps$ReduceOp.evaluateSequential(ReduceOps.java:708) ~[na:1.8.0_281]
+	at java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234) ~[na:1.8.0_281]
+	at java.util.stream.ReferencePipeline.collect(ReferencePipeline.java:499) ~[na:1.8.0_281]
+	at springfox.documentation.spring.web.plugins.AbstractDocumentationPluginsBootstrapper.withDefaults(AbstractDocumentationPluginsBootstrapper.java:107) ~[springfox-spring-web-3.0.0.jar:3.0.0]
+	at springfox.documentation.spring.web.plugins.AbstractDocumentationPluginsBootstrapper.buildContext(AbstractDocumentationPluginsBootstrapper.java:91) ~[springfox-spring-web-3.0.0.jar:3.0.0]
+	at springfox.documentation.spring.web.plugins.AbstractDocumentationPluginsBootstrapper.bootstrapDocumentationPlugins(AbstractDocumentationPluginsBootstrapper.java:82) ~[springfox-spring-web-3.0.0.jar:3.0.0]
+	at springfox.documentation.spring.web.plugins.DocumentationPluginsBootstrapper.start(DocumentationPluginsBootstrapper.java:100) ~[springfox-spring-web-3.0.0.jar:3.0.0]
+	at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:178) ~[spring-context-5.3.25.jar:5.3.25]
+	... 14 common frames omitted
+
+
+Process finished with exit code 1
+
+```
+
+原因：
+
+>https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.6-Release-Notes
+>
+>Swagger-ui 2020年之后就没有更新了。
+>
+>在SpringBoot2.6之后，Spring MVC 处理程序映射**匹配请求路径的默认策略**已从 **AntPathMatcher** 更改为**PathPatternParser**。如果需要切换为AntPathMatcher，官方给出的方法是配置spring.mvc.pathmatch.matching-strategy=ant_path_matcher
+>
+>但是actuator endpoints在2.6之后也使用基于 PathPattern 的 URL 匹配，而且actuator endpoints的路径匹配策略无法通过配置属性进行配置，如果同时使用Actuator和Springfox，会导致程序启动失败，所以只是进行上面的设置是不行的。
+
+解决方案：修改依赖：
+
+代替原来的依赖
+
+```xml
+<!--swagger-->
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-boot-starter</artifactId>
+    <version>3.0.0</version>
+</dependency>
+```
+
+以下代码用于将**PathPatternParser**更改为**AntPathMatcher**。
+
+```java
+package com.example.snapsalesimulation.config;
+
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.CorsEndpointProperties;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
+import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
+import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
+import org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver;
+import org.springframework.boot.actuate.endpoint.web.EndpointMapping;
+import org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes;
+import org.springframework.boot.actuate.endpoint.web.ExposableWebEndpoint;
+import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.web.annotation.ControllerEndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.web.servlet.WebMvcEndpointHandlerMapping;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.util.StringUtils;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+@Configuration
+@EnableSwagger2
+public class SwaggerConfig {
+
+    @Bean
+    public WebMvcEndpointHandlerMapping webEndpointServletHandlerMapping(WebEndpointsSupplier webEndpointsSupplier,
+                                                                         ServletEndpointsSupplier servletEndpointsSupplier, ControllerEndpointsSupplier controllerEndpointsSupplier,
+                                                                         EndpointMediaTypes endpointMediaTypes, CorsEndpointProperties corsProperties,
+                                                                         WebEndpointProperties webEndpointProperties, Environment environment) {
+        List<ExposableEndpoint<?>> allEndpoints = new ArrayList<>();
+        Collection<ExposableWebEndpoint> webEndpoints = webEndpointsSupplier.getEndpoints();
+        allEndpoints.addAll(webEndpoints);
+        allEndpoints.addAll(servletEndpointsSupplier.getEndpoints());
+        allEndpoints.addAll(controllerEndpointsSupplier.getEndpoints());
+        String basePath = webEndpointProperties.getBasePath();
+        EndpointMapping endpointMapping = new EndpointMapping(basePath);
+        boolean shouldRegisterLinksMapping =
+                webEndpointProperties.getDiscovery().isEnabled() && (StringUtils.hasText(basePath)
+                        || ManagementPortType.get(environment).equals(ManagementPortType.DIFFERENT));
+        return new WebMvcEndpointHandlerMapping(endpointMapping, webEndpoints, endpointMediaTypes,
+                corsProperties.toCorsConfiguration(), new EndpointLinksResolver(allEndpoints, basePath),
+                shouldRegisterLinksMapping, null);
+    }
+}
+```
+
+# 三、SpringBoot
 
 ### @SpringBootConfiguration 注解，继承@Configuration注解，主要用于加载配置文件
 
@@ -48,7 +463,7 @@
 
    @Component: 把普通的类实例化到JSpring容器中
 
-# 二、Mybatis
+# 四、Mybatis
 
 基于Spring Boot使用Mybatis读取指定MySQL数据库
 
@@ -351,7 +766,7 @@
    >2022-11-18 13:48:44.412  INFO 38056 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
    >User{id=1, username='SYSTEM', password='SYSTEM', salt='SYSTEM', email='nowcoder1@sina.com', type=0, status=1, activationCode='null', headerUrl='http://static.nowcoder.com/images/head/notify.png', createTime=Sat Apr 13 10:11:03 CST 2019}
 
-# 三、Thymeleaf
+# 五、Thymeleaf
 
 基于Spring Boot使用Thymeleaf前端模板读取实现后端和前端的变量交换。
 

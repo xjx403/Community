@@ -1,7 +1,6 @@
 package com.coder.community.controller;
 
 import com.coder.community.annotation.LoginRequired;
-import com.coder.community.dao.UserMapper;
 import com.coder.community.entity.User;
 import com.coder.community.service.FollowService;
 import com.coder.community.service.LikeService;
@@ -9,7 +8,6 @@ import com.coder.community.service.UserService;
 import com.coder.community.util.CommunityConstant;
 import com.coder.community.util.CommunityUtil;
 import com.coder.community.util.HostHolder;
-import com.sun.deploy.net.HttpResponse;
 import org.codehaus.plexus.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +58,7 @@ public class UserController implements CommunityConstant {
     @LoginRequired
     @RequestMapping(value = "/setting",method = RequestMethod.GET)
     public String getSettingPage(){
-        return "/site/setting";
+        return "site/setting";
     }
 
     @LoginRequired
@@ -68,14 +66,14 @@ public class UserController implements CommunityConstant {
     public String uploadHeader(MultipartFile headerImage, Model model){
         if(headerImage == null){
             model.addAttribute("error","文件上传失败");
-            return "/site/setting";
+            return "site/setting";
         }
 
         String fileName = headerImage.getOriginalFilename();
         String suffix = fileName.substring(fileName.lastIndexOf("."));
         if(StringUtils.isBlank(suffix)){
             model.addAttribute("error","文件格式错误");
-            return "/site/setting";
+            return "site/setting";
         }
 
         //生成随机的文件名
@@ -129,21 +127,21 @@ public class UserController implements CommunityConstant {
     public String updatePassword(String oldPassword , String newPassword ,String sure, Model model){
         if(!sure.equals(newPassword)){
             model.addAttribute("sureError","两次输入不相同");
-            return "/site/setting";
+            return "site/setting";
         }
         if(newPassword == null){
             model.addAttribute("newPasswordError","新密码不能为空");
-            return "/site/setting";
+            return "site/setting";
         }
         if(newPassword.equals(oldPassword)){
             model.addAttribute("newPasswordError","新密码和旧密码相同！！");
-            return "/site/setting";
+            return "site/setting";
         }
         User user = hostHolder.getUser();
         oldPassword = CommunityUtil.md5(oldPassword + user.getSalt());
         if(!oldPassword.equals(user.getPassword())){
             model.addAttribute("oldPasswordError","密码错误！");
-            return "/site/setting";
+            return "site/setting";
         }
         userService.updatePassword(user.getId() , CommunityUtil.md5(newPassword + user.getSalt()));
         return "redirect:/index";
@@ -175,6 +173,6 @@ public class UserController implements CommunityConstant {
             hasFollowed = followService.hasFollowed(hostHolder.getUser().getId(),ENTITY_TYPE_USER,userId);
         }
         model.addAttribute("hasFollowed",hasFollowed);
-        return "/site/profile";
+        return "site/profile";
     }
 }

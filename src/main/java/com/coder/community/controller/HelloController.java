@@ -20,7 +20,7 @@ public class HelloController {
     public String hello(Model model){
         String str="你好";
         model.addAttribute("content",str);
-        return "/site/error/demo";
+        return "site/error/demo";
     }
 
     //cookie演示

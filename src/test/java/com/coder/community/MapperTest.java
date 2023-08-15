@@ -4,11 +4,16 @@ package com.coder.community;
 import com.coder.community.controller.HomeController;
 import com.coder.community.dao.*;
 import com.coder.community.entity.*;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -141,5 +146,35 @@ public class MapperTest {
         System.out.println(i);
 
         System.out.println(messageMapper.selectLetterUnreadCount(131,"111_131"));
+    }
+
+    @Test
+    public void testThreadPool() {
+        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        taskExecutor.setCorePoolSize(10);
+        taskExecutor.setMaxPoolSize(20);
+        taskExecutor.setQueueCapacity(1000);
+        taskExecutor.initialize();
+
+        for (int i = 0; i < 10; i++) {
+            taskExecutor.execute(() -> {
+                try {
+                    System.out.println(Thread.currentThread().getName() + " get:" +
+                            discussPostMapper.selectDiscussPostById(122));
+                }catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+
+            });
+        }
+    }
+
+    @Test
+    public void testMybatis(){
+        SqlSessionFactoryBuilder builder = new SqlSessionFactoryBuilder();
+        SqlSessionFactory sessionFactory = builder.build(new Configuration());
+        SqlSession sqlSession = sessionFactory.openSession();
+
+        sqlSession.getMapper(commentMapper.getClass());
     }
 }

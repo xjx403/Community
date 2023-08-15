@@ -1,17 +1,18 @@
 package com.coder.community;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.core.BoundZSetOperations;
-import org.springframework.data.redis.core.RedisOperations;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.data.redis.core.*;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.bind.annotation.RequestMapping;
+import springfox.documentation.spring.web.json.Json;
+
+import java.util.Set;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -19,24 +20,31 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class RedisTest {
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    @Test
+    public void testConnection() {
+
+        System.out.println(redisTemplate.type("backup1"));
+        ObjectMapper objectMapper = new ObjectMapper();
+
+
+        long start = System.currentTimeMillis();
+
+        Object backup1 = redisTemplate.opsForValue().get("backup1");
+        long end = System.currentTimeMillis();
+        System.out.println(backup1.toString());
+        System.out.println("spend time :" + (end - start) + "ms");
+    }
+
     @Test
     public void testString(){
-        redisTemplate.opsForValue().set("name","肖家新");
-        System.out.println(redisTemplate.opsForValue().get("name"));
-
-        String  str = "test::hash";
-        redisTemplate.opsForHash().put(str,"id",1);
-        redisTemplate.opsForHash().put(str,"name","肖家新");
-        System.out.println(redisTemplate.opsForHash().get(str,"id"));
-        System.out.println(redisTemplate.opsForHash().get(str,"name"));
-
-        String s1 = "test::list";
-        redisTemplate.opsForList().leftPush(s1,101);
-        redisTemplate.opsForList().leftPush(s1,102);
-        redisTemplate.opsForList().leftPush(s1,103);
-        System.out.println(redisTemplate.opsForList().size(s1));
-        System.out.println(redisTemplate.opsForList().range(s1,1,3));
-        System.out.println(redisTemplate.opsForList().index(s1,1));
+        long start = System.currentTimeMillis();
+        Object name = stringRedisTemplate.opsForValue().get("name");
+        long end = System.currentTimeMillis();
+        System.out.println(name.toString());
+        System.out.println("spend time :" + (end - start) + "ms");
     }
 
     @Test

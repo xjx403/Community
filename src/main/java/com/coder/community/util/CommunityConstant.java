@@ -41,4 +41,13 @@ public interface CommunityConstant {
      * */
     int ENTITY_TYPE_USER = 3;
 
+    /**
+     * 主题：发帖
+     */
+    String TOPIC_PUBLISH = "publish";
+    /**
+     * 主题：删帖
+     */
+    String TOPIC_DELETE = "delete";
+
 }

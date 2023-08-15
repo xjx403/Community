@@ -10,7 +10,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.util.List;
 
 @Service
-public class DicussPostService {
+public class DiscussPostService {
 
     @Autowired
     private DiscussPostMapper discussPostMapper;

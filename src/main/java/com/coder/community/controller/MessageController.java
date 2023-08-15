@@ -60,7 +60,7 @@ public class MessageController {
         int letterUnreadCount = messageService.findLettersUnreadCount(user.getId(), null);
         model.addAttribute("letterUnreadCount",letterUnreadCount);
 
-        return "/site/letter";
+        return "site/letter";
     }
 
     @RequestMapping(path = "/letter/detail/{conversationId}",method = RequestMethod.GET)
@@ -86,7 +86,7 @@ public class MessageController {
 
         model.addAttribute("target",getLetterTarget(conversationId));
 
-        return "/site/letter-detail";
+        return "site/letter-detail";
     }
 
     private User getLetterTarget(String conversationId) {

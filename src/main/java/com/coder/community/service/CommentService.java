@@ -23,7 +23,7 @@ public class CommentService implements CommunityConstant {
     private SensitiveFilter sensitiveFilter;
 
     @Autowired
-    private DicussPostService discussPostService;
+    private DiscussPostService discussPostService;
 
     public List<Comment> findCommentByEntity(int entityType, int entityId, int offset, int limit){
         return commentMapper.selectCommentsByEntity(entityType,entityId,offset,limit);

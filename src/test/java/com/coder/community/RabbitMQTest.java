@@ -1,6 +1,7 @@
 package com.coder.community;
 
-import com.coder.community.util.SensitiveFilter;
+import com.coder.community.entity.DiscussPost;
+import com.coder.community.service.DiscussPostService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,16 +12,14 @@ import org.springframework.test.context.junit4.SpringRunner;
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @ContextConfiguration(classes = CommunityApplication.class)
-public class SensitiveTests {
+public class RabbitMQTest {
+
     @Autowired
-    private SensitiveFilter sensitiveFilter;
+    private DiscussPostService discussPostService;
 
     @Test
-    public void testSensitiveFilter(){
-        String text = "这里$$ 可以$$赌$博$，可以嫖娼，可以吸毒，可以开@票，哈哈";
-        text = sensitiveFilter.filter(text);
-        System.out.println(text);
+    public void testDiscussPostService(){
+        DiscussPost discussPostById = discussPostService.findDiscussPostById(291);
+        System.out.println("这是查询结果" + discussPostById);
     }
-
-
 }

@@ -1,11 +1,10 @@
 package com.coder.community.controller;
 
-import com.coder.community.entity.Comment;
-import com.coder.community.entity.DiscussPost;
-import com.coder.community.entity.Page;
-import com.coder.community.entity.User;
+import com.coder.community.annotation.LoginRequired;
+import com.coder.community.entity.*;
+import com.coder.community.event.EventProducer;
 import com.coder.community.service.CommentService;
-import com.coder.community.service.DicussPostService;
+import com.coder.community.service.DiscussPostService;
 import com.coder.community.service.LikeService;
 import com.coder.community.service.UserService;
 import com.coder.community.util.CommunityConstant;
@@ -29,17 +28,18 @@ import java.util.*;
 @RequestMapping(path = "/discuss")
 public class DiscussPostController implements CommunityConstant {
     @Autowired
-    private DicussPostService dicussPostService;
+    private DiscussPostService discussPostService;
     @Autowired
     private HostHolder hostHolder;
     @Autowired
     private UserService userService;
-
     @Autowired
     private CommentService commentService;
-
     @Autowired
     private LikeService likeService;
+    @Autowired
+    private EventProducer eventProducer;
+
 
     @RequestMapping(path = "/add", method = RequestMethod.POST)
     @ResponseBody
@@ -54,16 +54,25 @@ public class DiscussPostController implements CommunityConstant {
         post.setTitle(title);
         post.setContent(content);
         post.setCreateTime(new Date());
-        dicussPostService.addDiscussPost(post);
+        discussPostService.addDiscussPost(post);
 
+        //触发发帖事件
+        Event event = new Event()
+                .setTopic(TOPIC_PUBLISH)
+                .setUserId(user.getId())
+                .setEntityType(ENTITY_TYPE_POST)
+                .setEntityId(post.getId());
+
+        eventProducer.fireEvent(event);
         //报错的情况将来统一处理。
         return CommunityUtil.getJSONString(0,"发布成功");
     }
 
+    @LoginRequired
     @RequestMapping(path = "/detail/{discussPostId}", method = RequestMethod.GET)
     private String getDiscussPost(@PathVariable("discussPostId") int discussPostId , Model model, Page page){
         //帖子
-        DiscussPost post = dicussPostService.findDiscussPostById(discussPostId);
+        DiscussPost post = discussPostService.findDiscussPostById(discussPostId);
         model.addAttribute("post",post);
         //作者
         User user = userService.findUserById(post.getUserId());
@@ -145,6 +154,22 @@ public class DiscussPostController implements CommunityConstant {
 
         model.addAttribute("comments",commentVoList);
 
-        return "/site/discuss-detail";
+        return "site/discuss-detail";
     }
+
+    @LoginRequired
+    @RequestMapping(path = "/my/post/{userId}", method = RequestMethod.GET)
+    private String myPost(@PathVariable("userId")int userId, Model model, Page page){
+        int myDiscussPostRows = discussPostService.findDiscussPostRows(userId);
+        page.setLimit(5);
+        page.setPath("/discuss/my/post/" + userId);
+        page.setRows(myDiscussPostRows);
+        List<DiscussPost> myDiscussPosts = discussPostService.findDiscussPost(userId, page.getOffset(), page.getLimit());
+        User user = userService.findUserById(userId);
+        model.addAttribute("user",user);
+        model.addAttribute("myPosts",myDiscussPosts);
+        model.addAttribute("myPostRows",myDiscussPostRows);
+        return "site/my-post";
+    }
+
 }
